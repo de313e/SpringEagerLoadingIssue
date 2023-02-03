@@ -1,73 +1,104 @@
 package com.kion.springeagerloadingissue;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import java.util.List;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import com.kion.springeagerloadingissue.model.User;
 import com.kion.springeagerloadingissue.model.UserSettings;
 import com.kion.springeagerloadingissue.model.UserTermsOfUse;
+import com.kion.springeagerloadingissue.repository.UserRepository;
 import com.kion.springeagerloadingissue.repository.UserSettingsRepository;
 import com.kion.springeagerloadingissue.repository.UserTermsOfUseRepository;
-import com.kion.springeagerloadingissue.repository.UserRepository;
+import jakarta.persistence.EntityManager;
+import org.aspectj.lang.annotation.After;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
+@Transactional // <-- works fine with this annotation. Without second and third test fail in the same way
 class SpringEagerLoadingIssueApplicationTests {
 
-    @Autowired
-    UserRepository userRepository;
+	@Autowired
+	UserRepository userRepository;
 
-    @Autowired
-    UserTermsOfUseRepository userTermsOfUseRepository;
+	@Autowired
+	UserTermsOfUseRepository userTermsOfUseRepository;
 
-    @Autowired
-    UserSettingsRepository userSettingsRepository;
+	@Autowired
+	UserSettingsRepository userSettingsRepository;
 
-    @Test
-    @Order(1)
-    void firstTest() {
-        //given
-        System.out.println("- 1st TEST ");
-        User user = new User();
+	@Autowired
+	EntityManager em;
 
-        UserSettings userSettings = new UserSettings();
-        userSettings.setUser(user);
-        user.setUserSettings(userSettings);
+	User user = new User();
 
-        UserTermsOfUse userTermsOfUse = new UserTermsOfUse();
-        userTermsOfUse.setUser(user);
-        user.setUserTermsOfUse(userTermsOfUse);
+	@BeforeEach
+	void beforeEach() {
 
-        //when
-        userRepository.save(user);
-        // then
-        assertEquals(1, userRepository.findAll().size());
-        assertEquals(1, userTermsOfUseRepository.findAll().size());
-        assertEquals(1, userSettingsRepository.findAll().size());
+		UserSettings userSettings = new UserSettings();
+		userSettings.setUser(user);
+		user.setUserSettings(userSettings);
 
-        System.out.println("------------------------");
-        System.out.println("User.ID: " + user.getId());
-        System.out.println("User.userSettings.ID: " + user.getUserSettings().getId());
-        System.out.println("User.userTermsOfUse.ID: " + user.getUserTermsOfUse().getId());
-        System.out.println("------------------------");
-    }
+		UserTermsOfUse userTermsOfUse = new UserTermsOfUse();
+		userTermsOfUse.setUser(user);
+		user.setUserTermsOfUse(userTermsOfUse);
 
-    @Test
-    @Order(2)
-    void secondTest() {
-        System.out.println("- 2nd TEST ");
-        List<User> all = userRepository.findAll();
+		//when
+		userRepository.save(user);
 
-        assertEquals(1, all.size());
-        User user = all.get(0);
-        System.out.println("------------------------");
-        System.out.println("User.ID: " + user.getId());
-        System.out.println("User.userSettings.ID: " + user.getUserSettings().getId()); // Null Pointer da user settings nicht da
-        System.out.println("User.userTermsOfUse.ID: " + user.getUserTermsOfUse().getId());
-        System.out.println("------------------------");
+	}
 
-    }
+	@AfterEach
+	void afterEach(){
+		userRepository.delete(user);
+	}
 
+	@Test
+	void firstTest() {
+
+		//given
+		System.out.println("- 1st TEST ");
+		// then
+		assertEquals(1, userRepository.findAll().size());
+		assertEquals(1, userTermsOfUseRepository.findAll().size());
+		assertEquals(1, userSettingsRepository.findAll().size());
+
+		System.out.println("------------------------");
+		System.out.println("User.ID: " + user.getId());
+		System.out.println("User.userSettings.ID: " + user.getUserSettings().getId());
+		System.out.println("User.userTermsOfUse.ID: " + user.getUserTermsOfUse().getId());
+		System.out.println("------------------------");
+	}
+
+	@Test
+	void secondTest() {
+		System.out.println("- 2nd TEST ");
+		List<User> all = userRepository.findAll();
+
+		assertEquals(1, all.size());
+		User user = all.get(0);
+		System.out.println("------------------------");
+		System.out.println("User.ID: " + user.getId());
+		System.out.println("User.userSettings.ID: " + user.getUserSettings().getId()); // Null Pointer da user settings nicht da
+		System.out.println("User.userTermsOfUse.ID: " + user.getUserTermsOfUse().getId());
+		System.out.println("------------------------");
+
+	}
+	@Test
+	void thirdTest() {
+		System.out.println("- 3rd TEST ");
+
+		User user = em.createQuery("select u from User u", User.class).getSingleResult();
+		System.out.println("------------------------");
+		System.out.println("User.ID: " + user.getId());
+		System.out.println("User.userSettings.ID: " + user.getUserSettings().getId()); // Null Pointer da user settings nicht da
+		System.out.println("User.userTermsOfUse.ID: " + user.getUserTermsOfUse().getId());
+		System.out.println("------------------------");
+
+	}
 }
